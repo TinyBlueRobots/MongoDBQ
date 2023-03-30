@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>MongoDBQ</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Tiny Blue Robots</Authors>
+    <Description>A MongoDB message queue that supports locking, retries, scheduling, and deduplication</Description>
+    <PackageTags>queue;mongodb;message</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageIcon>logo.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/TinyBlueRobots/MongoDBQ</PackageProjectUrl>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\LICENSE" Pack="true" PackagePath="" />
+    <None Include="..\logo.png" Pack="true" PackagePath="" />
+  </ItemGroup>
+  <Import Project="..\.paket\Paket.Restore.targets" />
+</Project>
