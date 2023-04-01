@@ -7,8 +7,8 @@
     <PackageId>MongoDBQ</PackageId>
     <Version>1.0.0</Version>
     <Authors>Tiny Blue Robots</Authors>
-    <Description>A MongoDB message queue that supports locking, retries, scheduling, and deduplication</Description>
-    <PackageTags>queue;mongodb;message</PackageTags>
+    <Description>A MongoDB message queue that supports locking, retries, scheduling, deduplication, and CosmosDB</Description>
+    <PackageTags>queue;mongodb;message;cosmosdb</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageIcon>logo.png</PackageIcon>
     <PackageProjectUrl>https://github.com/TinyBlueRobots/MongoDBQ</PackageProjectUrl>

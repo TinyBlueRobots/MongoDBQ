@@ -46,4 +46,9 @@ public class Message<T>
   /// Gets or sets the enqueue time for processing the message.
   /// </summary>
   public DateTime ScheduledEnqueueTime { get; set; } = DateTime.MinValue;
+
+  /// <summary>
+  /// Gets or sets the time to live for the message for CosmosDB.
+  /// </summary>
+  public int? _ttl { get; private set; }
 }

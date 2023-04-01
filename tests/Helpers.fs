@@ -8,14 +8,14 @@ open Expecto
 
 type TestData = { Data: string }
 
-type TestApi(maxDeliveryCount, lockDuration) =
+type TestApi(maxDeliveryCount, lockDuration, ?cosmosDB) =
   do Mongo.dropAllCollections ()
   let client = MongoClient "mongodb://localhost:27017"
   let db = client.GetDatabase "test"
   let collection = db.GetCollection<Message<TestData>> "messages"
 
   let mongoDBQ =
-    MongoDBQ(collection, maxDeliveryCount, lockDuration, TimeSpan.FromSeconds 10)
+    MongoDBQ(collection, maxDeliveryCount, lockDuration, TimeSpan.FromSeconds 10, cosmosDB |> Option.defaultValue false)
 
   member _.ReadActiveMessages() =
     let filter = Builders.Filter.And [| Builders.Filter.Eq("Completed", Nullable()) |]

@@ -1,6 +1,5 @@
 # MongoDBQ
-A MongoDB message queue that supports locking, retries, scheduling, and deduplication
-
+A MongoDB message queue that supports locking, retries, scheduling, deduplication, and CosmosDB
 
 [![NuGet Version](http://img.shields.io/nuget/v/MongoDBQ.svg?style=flat)](https://www.nuget.org/packages/MongoDBQ/)
 
@@ -58,6 +57,7 @@ while (true)
 - `maxDeliveryCount`: The maximum number of times a message can be delivered before it is considered poisoned.
 - `lockDuration`: The duration for which a message should be locked after being dequeued. When the lock expires it will be available for dequeueing again.
 - `expireAfter`: Optional time after which a completed message should be removed from the collection.
+- `cosmosDB`: Enable CosmosDB TTL
 
 When creating a `Message`:
 - Set the `Id` property to enable deduplication; I use [Identifiable](https://github.com/seanterry/Identifiable) to create a deterministic name-based GUID from properties of the message body.

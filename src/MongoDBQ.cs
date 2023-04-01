@@ -11,6 +11,8 @@ public class MongoDBQ<T>
   readonly IMongoCollection<Message<T>> _collection;
   readonly int _maxDeliveryCount;
   readonly TimeSpan _lockDuration;
+  readonly bool _cosmosDB;
+  readonly TimeSpan _expireAfter;
 
   /// <summary>
   /// Initializes a new instance of the <see cref="MongoDBQ{T}"/> class.
@@ -19,17 +21,22 @@ public class MongoDBQ<T>
   /// <param name="maxDeliveryCount">The maximum number of times a message can be delivered before it is considered poisoned.</param>
   /// <param name="lockDuration">The duration for which a message should be locked after being dequeued.</param>
   /// <param name="expireAfter">The time after which a completed message should be removed from the collection.</param>
-  public MongoDBQ(IMongoCollection<Message<T>> collection, int maxDeliveryCount, TimeSpan lockDuration, TimeSpan expireAfter)
+  /// <param name="cosmosDB">Enable CosmosDB specific features</param>
+  public MongoDBQ(IMongoCollection<Message<T>> collection, int maxDeliveryCount, TimeSpan lockDuration, TimeSpan expireAfter, bool cosmosDB = false)
   {
     _collection = collection;
     _maxDeliveryCount = maxDeliveryCount;
     _lockDuration = lockDuration;
-    bool IndexExists(string indexName) => _collection.Indexes.List().ToList().Any(index => index["name"] == indexName);
+    _cosmosDB = cosmosDB;
+    _expireAfter = expireAfter;
 
+    bool IndexExists(string indexName) => _collection.Indexes.List().ToList().Any(index => index["name"] == indexName);
+    
     var indexName = "completed_expiry";
     if (expireAfter > TimeSpan.Zero && !IndexExists(indexName))
     {
-      var indexKeys = Builders<Message<T>>.IndexKeys.Ascending(m => m.Completed);
+      var field = cosmosDB ? "_ts" : "Completed";
+      var indexKeys = Builders<Message<T>>.IndexKeys.Ascending(field);
       var indexModel = new CreateIndexModel<Message<T>>(indexKeys, new CreateIndexOptions
       {
         ExpireAfter = expireAfter,
@@ -61,8 +68,9 @@ public class MongoDBQ<T>
   /// <param name="collection">The MongoDB collection to use for storing messages.</param>
   /// <param name="maxDeliveryCount">The maximum number of times a message can be delivered before it is considered poisoned.</param>
   /// <param name="lockDuration">The duration for which a message should be locked after being dequeued.</param>
-  public MongoDBQ(IMongoCollection<Message<T>> collection, int maxDeliveryCount, TimeSpan lockDuration)
-      : this(collection, maxDeliveryCount, lockDuration, TimeSpan.Zero) { }
+  /// <param name="cosmosDB">Enable CosmosDB specific features</param>
+  public MongoDBQ(IMongoCollection<Message<T>> collection, int maxDeliveryCount, TimeSpan lockDuration, bool cosmosDB = false)
+      : this(collection, maxDeliveryCount, lockDuration, TimeSpan.Zero, cosmosDB) { }
 
   /// <summary>
   /// Enqueues a message in the queue.
@@ -139,9 +147,16 @@ public class MongoDBQ<T>
   {
     var query = Builders<Message<T>>.Filter.Eq(m => m.Id, message.Id);
     var update = Builders<Message<T>>.Update.Set(m => m.Completed, DateTime.UtcNow);
+
+    if (_cosmosDB && _expireAfter != TimeSpan.Zero)
+    {
+      update = update.Set("_ttl", (int)_expireAfter.TotalSeconds);
+    }
+
     var result = await _collection.UpdateOneAsync(query, update);
     return result.IsAcknowledged;
   }
+
 
   /// <summary>
   /// Marks a message as failed.
