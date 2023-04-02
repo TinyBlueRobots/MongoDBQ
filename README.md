@@ -23,6 +23,7 @@ await mongoDBQ.Enqueue(message);
 ### Client
 ```csharp
 using MongoDBQ;
+using MongoDB.Driver;
 
 record TestData(Guid Data);
 
