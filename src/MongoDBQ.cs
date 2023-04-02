@@ -107,11 +107,10 @@ public class MongoDBQ<T>
   }
 
   /// <summary>
-  /// Dequeues a specified number of messages from the queue.
+  /// Dequeues a message from the queue.
   /// </summary>
-  /// <param name="messageCount">The number of messages to dequeue.</param>
-  /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with an array of dequeued messages.</returns>
-  public async Task<Message<T>[]> Dequeue(int messageCount)
+  /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with a dequeued message.</returns>
+  public async Task<Message<T>> Dequeue()
   {
     var now = DateTime.UtcNow;
 
@@ -133,9 +132,7 @@ public class MongoDBQ<T>
         .Set(m => m.LockedUntil, now + _lockDuration)
         .Inc(m => m.DeliveryCount, 1);
 
-    var tasks = Enumerable.Range(0, messageCount).Select(_ => _collection.FindOneAndUpdateAsync(filter, update, options));
-    var messages = await Task.WhenAll(tasks);
-    return messages.Where(message => message != null).ToArray();
+    return await _collection.FindOneAndUpdateAsync(filter, update, options);
   }
 
   /// <summary>

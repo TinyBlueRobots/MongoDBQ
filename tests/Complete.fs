@@ -24,7 +24,7 @@ let tests =
     Expect.isGreaterThanOrEqual enqueuedMessage.Created now "created"
 
     //check dequeued message
-    let dequeuedMessage = testApi.Dequeue 10 |> Seq.head
+    let dequeuedMessage = testApi.Dequeue()
     Expect.equal message.Id dequeuedMessage.Id "id"
     Expect.objectsEqual message.Body dequeuedMessage.Body
     Expect.equal dequeuedMessage.DeliveryCount 1 "delivery count"

@@ -25,7 +25,7 @@ type TestApi(maxDeliveryCount, lockDuration, ?cosmosDB) =
     collection.Find(FilterDefinition.Empty).ToList().ToArray()
 
   member _.Enqueue message = mongoDBQ.Enqueue(message).Result
-  member _.Dequeue maxCount = mongoDBQ.Dequeue(maxCount).Result
+  member _.Dequeue() = mongoDBQ.Dequeue().Result
   member _.Complete message = mongoDBQ.Complete(message).Result
   member _.Fail message = mongoDBQ.Fail(message).Result
   member _.Delete message = mongoDBQ.Delete(message).Result

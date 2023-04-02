@@ -32,23 +32,20 @@ var collection = db.GetCollection<Message<TestData>>("messages");
 var mongoDBQ = new MongoDBQ<TestData>(collection, 5, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(1));
 while (true)
   {
-    var messages = await mongoDBQ.Dequeue(10);
-    //Sleep if there are no messages?
-    foreach (var message in messages)
+    var message = await mongoDBQ.Dequeue(10);
+    //Sleep if message is null?
+    try
       {
-        try
-            {
-              //do something with message.Body
-              await mongoDBQ.Complete(message); //mark as completed
-            }
+        //do something with message.Body
+        await mongoDBQ.Complete(message); //mark as completed
+      }
 
-            catch (System.Exception)
-            {
-              //we'll backoff and retry this later
-              message.ScheduledEnqueueTime = DateTime.UtcNow.AddMinutes(5);
-              await mongoDBQ.Fail(message);
-              //this makes the message available for retry, alternatively use mongoDBQ.Delete(message) if this is terminal
-            }
+      catch (System.Exception)
+      {
+        //Backoff and retry it later
+        message.ScheduledEnqueueTime = DateTime.UtcNow.AddMinutes(5);
+        await mongoDBQ.Fail(message);
+        //this makes the message available for retry, alternatively use mongoDBQ.Delete(message) if this is terminal
       }
   }
 ```
