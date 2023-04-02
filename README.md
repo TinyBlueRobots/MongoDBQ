@@ -32,7 +32,7 @@ var collection = db.GetCollection<Message<TestData>>("messages");
 var mongoDBQ = new MongoDBQ<TestData>(collection, 5, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(1));
 while (true)
   {
-    var message = await mongoDBQ.Dequeue(10);
+    var message = await mongoDBQ.Dequeue();
     //Sleep if message is null?
     try
       {
