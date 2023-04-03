@@ -1,6 +1,6 @@
 source https://api.nuget.org/v3/index.json
 
-framework: net6,net7
+framework: auto-detect
 storage: none
 nuget Expecto
 nuget MongoDB.Driver
