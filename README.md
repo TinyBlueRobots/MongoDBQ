@@ -60,3 +60,4 @@ while (true)
 When creating a `Message`:
 - Set the `Id` property to enable deduplication; I use [Identifiable](https://github.com/seanterry/Identifiable) to create a deterministic name-based GUID from properties of the message body.
 - Set `ScheduledEnqueueTime` to schedule the message for processing in the future.
+- Set `PartitionKey` to partition messages in the collection and then use `MongoDBQ.Dequeue(partitionKey)`.

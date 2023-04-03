@@ -5,11 +5,9 @@ using System.Diagnostics;
 var client = new MongoClient("mongodb://localhost:27017");
 var db = client.GetDatabase("test");
 var collection = db.GetCollection<Message<TestData>>("messages");
-var mongoDBQ = new MongoDBQ<TestData>(collection, 5, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(1));
-
-var messageCount = 5000;
+var mongoDBQ = new MongoDBQ<TestData>(collection, 5, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(1), true);
+var messageCount = 100;
 Enumerable.Range(0, messageCount).ToList().ForEach(i => mongoDBQ.Enqueue(new Message<TestData>(new TestData(Guid.NewGuid()))));
-
 var stopwatch = Stopwatch.StartNew();
 var loop = true;
 while (loop)

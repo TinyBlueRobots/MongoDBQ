@@ -43,6 +43,11 @@ public class Message<T>
   public DateTime LockedUntil { get; set; } = DateTime.MinValue;
 
   /// <summary>
+  /// Gets or sets the partition key for the message.
+  /// </summary>
+  public string? PartitionKey { get; set; }
+
+  /// <summary>
   /// Gets or sets the enqueue time for processing the message.
   /// </summary>
   public DateTime ScheduledEnqueueTime { get; set; } = DateTime.MinValue;

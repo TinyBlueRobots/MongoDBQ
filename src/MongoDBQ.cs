@@ -31,7 +31,7 @@ public class MongoDBQ<T>
     _expireAfter = expireAfter;
 
     bool IndexExists(string indexName) => _collection.Indexes.List().ToList().Any(index => index["name"] == indexName);
-    
+
     var indexName = "completed_expiry";
     if (expireAfter > TimeSpan.Zero && !IndexExists(indexName))
     {
@@ -53,7 +53,8 @@ public class MongoDBQ<T>
           .Ascending(m => m.LockedUntil)
           .Ascending(m => m.ScheduledEnqueueTime)
           .Ascending(m => m.Completed)
-          .Ascending(m => m.Created);
+          .Ascending(m => m.Created)
+          .Ascending(m => m.PartitionKey);
       var indexModel = new CreateIndexModel<Message<T>>(dequeueIndexKeys, new CreateIndexOptions
       {
         Name = indexName
@@ -110,16 +111,17 @@ public class MongoDBQ<T>
   /// Dequeues a message from the queue.
   /// </summary>
   /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with a dequeued message.</returns>
-  public async Task<Message<T>> Dequeue()
+  public async Task<Message<T>> Dequeue(string? partitionKey = null)
   {
     var now = DateTime.UtcNow;
 
-    var filter = Builders<Message<T>>.Filter.And(
-        Builders<Message<T>>.Filter.Lt(m => m.DeliveryCount, _maxDeliveryCount),
-        Builders<Message<T>>.Filter.Lte(m => m.LockedUntil, now),
-        Builders<Message<T>>.Filter.Lte(m => m.ScheduledEnqueueTime, now),
-        Builders<Message<T>>.Filter.Eq(m => m.Completed, null));
+    var filter =
+        Builders<Message<T>>.Filter.Lt(m => m.DeliveryCount, _maxDeliveryCount) &
+        Builders<Message<T>>.Filter.Lte(m => m.LockedUntil, now) &
+        Builders<Message<T>>.Filter.Lte(m => m.ScheduledEnqueueTime, now) &
+        Builders<Message<T>>.Filter.Eq(m => m.Completed, null);
 
+    filter = partitionKey == null ? filter : filter & Builders<Message<T>>.Filter.Eq(m => m.PartitionKey, partitionKey);
     var sort = Builders<Message<T>>.Sort.Ascending(m => m.Created);
 
     var options = new FindOneAndUpdateOptions<Message<T>, Message<T>>
