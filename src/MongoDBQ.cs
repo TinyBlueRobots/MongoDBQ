@@ -29,13 +29,15 @@ public class MongoDBQ<T>
     _lockDuration = lockDuration;
     _cosmosDB = cosmosDB;
     _expireAfter = expireAfter;
+    CreateIndexes(collection, expireAfter, cosmosDB);
+  }
 
-    bool IndexExists(string indexName) => _collection.Indexes.List().ToList().Any(index => index["name"] == indexName);
-
+  void CreateIndexes(IMongoCollection<Message<T>> collection, TimeSpan expireAfter, bool cosmosDB)
+  {
     var indexName = "completed_expiry";
     if (expireAfter > TimeSpan.Zero && !IndexExists(indexName))
     {
-      var field = cosmosDB ? "_ts" : "Completed";
+      var field = cosmosDB ? "_ts" : nameof(Message<T>.Completed);
       var indexKeys = Builders<Message<T>>.IndexKeys.Ascending(field);
       var indexModel = new CreateIndexModel<Message<T>>(indexKeys, new CreateIndexOptions
       {
@@ -63,6 +65,8 @@ public class MongoDBQ<T>
     }
   }
 
+  bool IndexExists(string indexName) => _collection.Indexes.List().ToList().Any(index => index["name"] == indexName);
+
   /// <summary>
   /// Initializes a new instance of the <see cref="MongoDBQ{T}"/> class without message expiration.
   /// </summary>
@@ -77,12 +81,13 @@ public class MongoDBQ<T>
   /// Enqueues a message in the queue.
   /// </summary>
   /// <param name="message">The message to enqueue.</param>
+  /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
   /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with a boolean value indicating whether the message was enqueued successfully.</returns>
-  public async Task<bool> Enqueue(Message<T> message)
+  public async Task<bool> Enqueue(Message<T> message, CancellationToken cancellationToken = default)
   {
     try
     {
-      await _collection.InsertOneAsync(message);
+      await _collection.InsertOneAsync(message, cancellationToken: cancellationToken);
       return true;
     }
     catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
@@ -99,19 +104,22 @@ public class MongoDBQ<T>
   /// Deletes a message from the queue.
   /// </summary>
   /// <param name="message">The message to delete.</param>
+  /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
   /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with a boolean value indicating whether the message was deleted successfully.</returns>
-  public async Task<bool> Delete(Message<T> message)
+  public async Task<bool> Delete(Message<T> message, CancellationToken cancellationToken = default)
   {
     var query = Builders<Message<T>>.Filter.Eq(m => m.Id, message.Id);
-    var result = await _collection.DeleteOneAsync(query);
+    var result = await _collection.DeleteOneAsync(query, cancellationToken);
     return result.IsAcknowledged;
   }
 
   /// <summary>
   /// Dequeues a message from the queue.
   /// </summary>
+  /// <param name="partitionKey">The partition key to use for dequeueing the message.</param>
+  /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
   /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with a dequeued message.</returns>
-  public async Task<Message<T>> Dequeue(string? partitionKey = null)
+  public async Task<Message<T>> Dequeue(string? partitionKey = null, CancellationToken cancellationToken = default)
   {
     var now = DateTime.UtcNow;
 
@@ -121,7 +129,7 @@ public class MongoDBQ<T>
         Builders<Message<T>>.Filter.Lte(m => m.ScheduledEnqueueTime, now) &
         Builders<Message<T>>.Filter.Eq(m => m.Completed, null) &
         Builders<Message<T>>.Filter.Eq(m => m.PartitionKey, partitionKey);
-    
+
     var sort = Builders<Message<T>>.Sort.Ascending(m => m.Created);
 
     var options = new FindOneAndUpdateOptions<Message<T>, Message<T>>
@@ -134,39 +142,40 @@ public class MongoDBQ<T>
         .Set(m => m.LockedUntil, now + _lockDuration)
         .Inc(m => m.DeliveryCount, 1);
 
-    return await _collection.FindOneAndUpdateAsync(filter, update, options);
+    return await _collection.FindOneAndUpdateAsync(filter, update, options, cancellationToken);
   }
 
   /// <summary>
   /// Marks a message as completed.
   /// </summary>
   /// <param name="message">The message to mark as completed.</param>
+  /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
   /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with a boolean value indicating whether the message was marked as completed successfully.</returns>
-  public async Task<bool> Complete(Message<T> message)
+  public async Task<bool> Complete(Message<T> message, CancellationToken cancellationToken = default)
   {
     var query = Builders<Message<T>>.Filter.Eq(m => m.Id, message.Id);
     var update = Builders<Message<T>>.Update.Set(m => m.Completed, DateTime.UtcNow);
 
     if (_cosmosDB && _expireAfter != TimeSpan.Zero)
     {
-      update = update.Set("_ttl", (int)_expireAfter.TotalSeconds);
+      update = update.Set(m => m._ttl, (int)_expireAfter.TotalSeconds);
     }
 
-    var result = await _collection.UpdateOneAsync(query, update);
+    var result = await _collection.UpdateOneAsync(query, update, cancellationToken: cancellationToken);
     return result.IsAcknowledged;
   }
-
 
   /// <summary>
   /// Marks a message as failed.
   /// </summary>
   /// <param name="message">The message to mark as failed.</param>
+  /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
   /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with a boolean value indicating whether the message was marked as failed successfully.</returns>
-  public async Task<bool> Fail(Message<T> message)
+  public async Task<bool> Fail(Message<T> message, CancellationToken cancellationToken = default)
   {
     var query = Builders<Message<T>>.Filter.Eq(m => m.Id, message.Id);
     var update = Builders<Message<T>>.Update.Set(m => m.LockedUntil, DateTime.MinValue).Set(m => m.ScheduledEnqueueTime, message.ScheduledEnqueueTime);
-    var result = await _collection.UpdateOneAsync(query, update);
+    var result = await _collection.UpdateOneAsync(query, update, cancellationToken: cancellationToken);
     return result.IsAcknowledged;
   }
 }
