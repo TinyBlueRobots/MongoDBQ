@@ -119,9 +119,9 @@ public class MongoDBQ<T>
         Builders<Message<T>>.Filter.Lt(m => m.DeliveryCount, _maxDeliveryCount) &
         Builders<Message<T>>.Filter.Lte(m => m.LockedUntil, now) &
         Builders<Message<T>>.Filter.Lte(m => m.ScheduledEnqueueTime, now) &
-        Builders<Message<T>>.Filter.Eq(m => m.Completed, null);
-
-    filter = partitionKey == null ? filter : filter & Builders<Message<T>>.Filter.Eq(m => m.PartitionKey, partitionKey);
+        Builders<Message<T>>.Filter.Eq(m => m.Completed, null) &
+        Builders<Message<T>>.Filter.Eq(m => m.PartitionKey, partitionKey);
+    
     var sort = Builders<Message<T>>.Sort.Ascending(m => m.Created);
 
     var options = new FindOneAndUpdateOptions<Message<T>, Message<T>>
