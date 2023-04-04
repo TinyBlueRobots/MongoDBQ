@@ -2,9 +2,9 @@ STORAGE: NONE
 RESTRICTION: || (== net6.0) (== net7.0)
 NUGET
   remote: https://api.nuget.org/v3/index.json
-    AWSSDK.Core (3.7.106.10)
-    AWSSDK.SecurityToken (3.7.101.38)
-      AWSSDK.Core (>= 3.7.106.10 < 4.0)
+    AWSSDK.Core (3.7.106.11)
+    AWSSDK.SecurityToken (3.7.101.39)
+      AWSSDK.Core (>= 3.7.106.11 < 4.0)
     DnsClient (1.7)
       Microsoft.Win32.Registry (>= 5.0)
     Expecto (9.0.4)
