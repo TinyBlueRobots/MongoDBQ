@@ -55,5 +55,5 @@ public class Message<T>
   /// <summary>
   /// Gets or sets the time to live for the message for CosmosDB.
   /// </summary>
-  public int? _ttl { get; private set; }
+  public int _ttl { get; private set; } = -1;
 }
