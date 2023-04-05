@@ -13,5 +13,5 @@ let tests =
     testApi.Enqueue message |> ignore
     testApi.Complete message |> ignore
     let completedMessage = testApi.ReadAllMessages() |> Seq.head
-    Expect.isGreaterThan completedMessage._ttl 0 "completed"
+    Expect.isGreaterThan completedMessage.ttl 0 "completed"
   }

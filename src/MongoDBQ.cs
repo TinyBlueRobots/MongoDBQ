@@ -209,7 +209,7 @@ public class MongoDBQ<T>
 
     if (_cosmosDB && _expireAfter != TimeSpan.Zero)
     {
-      update = update.Set(m => m._ttl, (int)_expireAfter.TotalSeconds);
+      update = update.Set(m => m.ttl, (int)_expireAfter.TotalSeconds);
     }
 
     var result = await _collection.UpdateOneAsync(query, update, cancellationToken: cancellationToken);
