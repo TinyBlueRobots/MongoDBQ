@@ -110,8 +110,7 @@ public class MongoDBQ<T>
   /// <returns>A <see cref="Task{Boolean}"/> representing the asynchronous operation, with a boolean value indicating whether the message was deleted successfully.</returns>
   public async Task<bool> Delete(Message<T> message, CancellationToken cancellationToken = default)
   {
-    var query = Builders<Message<T>>.Filter.Eq(m => m.Id, message.Id);
-    var result = await _collection.DeleteOneAsync(query, cancellationToken);
+    var result = await _collection.DeleteOneAsync(m => m.Id == message.Id, cancellationToken);
     return result.IsAcknowledged;
   }
 
@@ -204,7 +203,6 @@ public class MongoDBQ<T>
   /// <returns>A <see cref="Task{Boolean}"/> representing the asynchronous operation, with a boolean value indicating whether the message was marked as completed successfully.</returns>
   public async Task<bool> Complete(Message<T> message, CancellationToken cancellationToken = default)
   {
-    var query = Builders<Message<T>>.Filter.Eq(m => m.Id, message.Id);
     var update = Builders<Message<T>>.Update.Set(m => m.Completed, DateTime.UtcNow);
 
     if (_cosmosDB && _expireAfter != TimeSpan.Zero)
@@ -212,7 +210,7 @@ public class MongoDBQ<T>
       update = update.Set(m => m.ttl, (int)_expireAfter.TotalSeconds);
     }
 
-    var result = await _collection.UpdateOneAsync(query, update, cancellationToken: cancellationToken);
+    var result = await _collection.UpdateOneAsync(m => m.Id == message.Id, update, cancellationToken: cancellationToken);
     return result.IsAcknowledged;
   }
 
@@ -224,9 +222,8 @@ public class MongoDBQ<T>
   /// <returns>A <see cref="Task{Boolean}"/> representing the asynchronous operation, with a boolean value indicating whether the message was marked as failed successfully.</returns>
   public async Task<bool> Fail(Message<T> message, CancellationToken cancellationToken = default)
   {
-    var query = Builders<Message<T>>.Filter.Eq(m => m.Id, message.Id);
     var update = Builders<Message<T>>.Update.Set(m => m.LockedUntil, DateTime.MinValue).Set(m => m.ScheduledEnqueueTime, message.ScheduledEnqueueTime);
-    var result = await _collection.UpdateOneAsync(query, update, cancellationToken: cancellationToken);
+    var result = await _collection.UpdateOneAsync(m => m.Id == message.Id, update, cancellationToken: cancellationToken);
     return result.IsAcknowledged;
   }
 }
