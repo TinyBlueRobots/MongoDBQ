@@ -119,8 +119,9 @@ public class MongoDBQ<T>
   /// </summary>
   /// <param name="partitionKey">An optional partition key to use for dequeueing the message.</param>
   /// <param name="cancellationToken">An optional cancellation token that can be used to cancel the operation.</param>
+  /// <param name="autoComplete">Whether to automatically complete the message after it is dequeued.</param>
   /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with a dequeued message.</returns>
-  public async Task<Message<T>> Dequeue(string? partitionKey = null, CancellationToken cancellationToken = default)
+  public async Task<Message<T>> Dequeue(string? partitionKey = null, CancellationToken cancellationToken = default, bool autoComplete = false)
   {
     var now = DateTime.UtcNow;
 
@@ -142,6 +143,7 @@ public class MongoDBQ<T>
     var update = Builders<Message<T>>.Update
         .Set(m => m.LockedUntil, now + _lockDuration)
         .Inc(m => m.DeliveryCount, 1);
+    update = autoComplete ? update.Set(m => m.Completed, now) : update;
 
     return await _collection.FindOneAndUpdateAsync(filter, update, options, cancellationToken);
   }
@@ -152,8 +154,9 @@ public class MongoDBQ<T>
   /// <param name="count">The number of messages to dequeue.</param>
   /// <param name="partitionKey">The partition key to use for dequeueing the message.</param>
   /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+  /// <param name="autoComplete">Whether to automatically complete the messages after they are dequeued.</param>
   /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with an array of dequeued messages.</returns>
-  public async Task<Message<T>[]> Dequeue(int count, string? partitionKey = null, CancellationToken cancellationToken = default)
+  public async Task<Message<T>[]> Dequeue(int count, string? partitionKey = null, CancellationToken cancellationToken = default, bool autoComplete = false)
   {
     var partitionLock = _partitionKeyLocks.GetOrAdd(partitionKey ?? "", new SemaphoreSlim(1, 1));
     await partitionLock.WaitAsync(cancellationToken);
@@ -183,6 +186,7 @@ public class MongoDBQ<T>
         var update = Builders<Message<T>>.Update
             .Set(m => m.LockedUntil, now + _lockDuration)
             .Inc(m => m.DeliveryCount, 1);
+        update = autoComplete ? update.Set(m => m.Completed, now) : update;
         var ids = list.Select(m => m.Id).ToList();
         var query = Builders<Message<T>>.Filter.In(m => m.Id, ids);
         await _collection.UpdateManyAsync(query, update, cancellationToken: cancellationToken);
