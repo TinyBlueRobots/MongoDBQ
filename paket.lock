@@ -2,9 +2,9 @@ STORAGE: NONE
 RESTRICTION: || (== net6.0) (== net7.0)
 NUGET
   remote: https://api.nuget.org/v3/index.json
-    AWSSDK.Core (3.7.106.15)
-    AWSSDK.SecurityToken (3.7.101.43)
-      AWSSDK.Core (>= 3.7.106.15 < 4.0)
+    AWSSDK.Core (3.7.106.18)
+    AWSSDK.SecurityToken (3.7.101.46)
+      AWSSDK.Core (>= 3.7.106.18 < 4.0)
     DnsClient (1.7)
       Microsoft.Win32.Registry (>= 5.0)
     Expecto (9.0.4)
@@ -12,7 +12,7 @@ NUGET
       Mono.Cecil (>= 0.11.3)
     FSharp.Core (7.0.200)
     Microsoft.Extensions.Logging.Abstractions (7.0)
-    Microsoft.NETCore.Platforms (7.0.1)
+    Microsoft.NETCore.Platforms (7.0.2)
     Microsoft.NETCore.Targets (5.0)
     Microsoft.Win32.Registry (5.0)
       System.Security.AccessControl (>= 5.0)
