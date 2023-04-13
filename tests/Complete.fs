@@ -35,4 +35,10 @@ let tests =
     let completedMessage = testApi.ReadAllMessages() |> Seq.head
     Expect.isTrue completed "completed"
     Expect.isGreaterThanOrEqual completedMessage.Completed.Value now "completed"
+
+    //fail message
+    let failed = testApi.Fail dequeuedMessage
+    Expect.isTrue failed "failed"
+    let failedMessage = testApi.ReadAllMessages() |> Seq.head
+    Expect.isFalse failedMessage.Completed.HasValue "completed"
   }
