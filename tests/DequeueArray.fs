@@ -19,12 +19,18 @@ let tests =
 
     //check completed message in db
     let completed = testApi.Complete dequeuedMessages
-    let completedMessage = testApi.ReadAllMessages()
+    let completedMessages = testApi.ReadAllMessages()
     Expect.isTrue completed "completed"
 
     Expect.isTrue
-      (completedMessage
+      (completedMessages
        |> Seq.map (fun x -> x.Completed.Value >= now)
        |> Seq.forall ((=) true))
       "completed"
+
+    //delete messages
+    let deleted = testApi.Delete completedMessages
+    Expect.isTrue deleted "deleted"
+    let deletedMessages = testApi.ReadAllMessages()
+    Expect.isEmpty deletedMessages "deleted"
   }

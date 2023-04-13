@@ -37,7 +37,8 @@ type TestApi(maxDeliveryCount, lockDuration, ?cosmosDB) =
   member _.Complete(message: Message<_>) = mongoDBQ.Complete(message).Result
   member _.Complete(messages: _ seq) = mongoDBQ.Complete(messages).Result
   member _.Fail message = mongoDBQ.Fail(message).Result
-  member _.Delete message = mongoDBQ.Delete(message).Result
+  member _.Delete(message: Message<_>) = mongoDBQ.Delete(message).Result
+  member _.Delete(messages: _ seq) = mongoDBQ.Delete(messages).Result
 
 module Expect =
   let objectsEqual actual expected =

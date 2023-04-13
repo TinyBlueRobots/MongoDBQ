@@ -115,6 +115,19 @@ public class MongoDBQ<T>
   }
 
   /// <summary>
+  /// Deletes a collection of messages from the queue.
+  /// </summary>
+  /// <param name="messages">The messages to delete.</param>
+  /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+  /// <returns>A <see cref="Task{Boolean}"/> representing the asynchronous operation, with a boolean value indicating whether the messages were deleted successfully.</returns>
+  public async Task<bool> Delete(IEnumerable<Message<T>> messages, CancellationToken cancellationToken = default)
+  {
+    var ids = messages.Select(m => m.Id);
+    var result = await _collection.DeleteManyAsync(m => ids.Contains(m.Id), cancellationToken);
+    return result.IsAcknowledged;
+  }
+
+  /// <summary>
   /// Dequeues a message from the queue with an optional partition key and cancellation token.
   /// </summary>
   /// <param name="partitionKey">An optional partition key to use for dequeueing the message.</param>
@@ -153,7 +166,7 @@ public class MongoDBQ<T>
   }
 
   /// <summary>
-  /// Dequeues a batch of messages from the queue.
+  /// Dequeues a collection of messages from the queue.
   /// </summary>
   /// <param name="count">The number of messages to dequeue.</param>
   /// <param name="partitionKey">The partition key to use for dequeueing the message.</param>
@@ -227,7 +240,7 @@ public class MongoDBQ<T>
   }
 
   /// <summary>
-  /// Marks a batch of messages as completed.
+  /// Marks a collection of messages as completed.
   /// </summary>
   /// <param name="messages">The messages to mark as completed.</param>
   /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
