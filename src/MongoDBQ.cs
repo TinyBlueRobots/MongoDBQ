@@ -144,6 +144,10 @@ public class MongoDBQ<T>
         .Set(m => m.LockedUntil, now + _lockDuration)
         .Inc(m => m.DeliveryCount, 1);
     update = autoComplete ? update.Set(m => m.Completed, now) : update;
+    if (_cosmosDB && _expireAfter != TimeSpan.Zero)
+    {
+      update = update.Set(m => m.ttl, (int)_expireAfter.TotalSeconds);
+    }
 
     return await _collection.FindOneAndUpdateAsync(filter, update, options, cancellationToken);
   }
@@ -187,6 +191,10 @@ public class MongoDBQ<T>
             .Set(m => m.LockedUntil, now + _lockDuration)
             .Inc(m => m.DeliveryCount, 1);
         update = autoComplete ? update.Set(m => m.Completed, now) : update;
+        if (_cosmosDB && _expireAfter != TimeSpan.Zero)
+        {
+          update = update.Set(m => m.ttl, (int)_expireAfter.TotalSeconds);
+        }
         var ids = list.Select(m => m.Id).ToList();
         var query = Builders<Message<T>>.Filter.In(m => m.Id, ids);
         await _collection.UpdateManyAsync(query, update, cancellationToken: cancellationToken);
