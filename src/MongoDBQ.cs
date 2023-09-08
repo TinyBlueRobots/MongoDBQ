@@ -14,7 +14,7 @@ public class MongoDBQ<T>
   readonly TimeSpan _lockDuration;
   readonly bool _cosmosDB;
   readonly TimeSpan _expireAfter;
-  readonly ConcurrentDictionary<string, SemaphoreSlim> _partitionKeyLocks = new ConcurrentDictionary<string, SemaphoreSlim>();
+  readonly ConcurrentDictionary<string, SemaphoreSlim> _partitionKeyLocks = new();
 
   /// <summary>
   /// Initializes a new instance of the <see cref="MongoDBQ{T}"/> class.
