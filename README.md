@@ -76,4 +76,4 @@ while (true)
 
 ### Optimistic completion
 
-Greater performance can be achieved by dequeueing batches, using `autoComplete`, and reversing the completion by calling `message.Fail()` for those that raise an error. Ensure this occurs within the expiry window if you're using TTLs.
+Greater performance can be achieved by dequeueing batches, using `autoComplete`, and reversing the completion by calling `mongoDBQ.Fail(message)` for those that raise an error. Ensure this occurs within the expiry window if you're using TTLs.
