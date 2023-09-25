@@ -134,35 +134,10 @@ public class MongoDBQ<T>
   /// <param name="cancellationToken">An optional cancellation token that can be used to cancel the operation.</param>
   /// <param name="autoComplete">Whether to automatically complete the message after it is dequeued.</param>
   /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with a dequeued message.</returns>
-  public async Task<Message<T>> Dequeue(string? partitionKey = null, CancellationToken cancellationToken = default, bool autoComplete = false)
+  public async Task<Message<T>?> Dequeue(string? partitionKey = null, CancellationToken cancellationToken = default, bool autoComplete = false)
   {
-    var now = DateTime.UtcNow;
-
-    var filter =
-        Builders<Message<T>>.Filter.Lt(m => m.DeliveryCount, _maxDeliveryCount) &
-        Builders<Message<T>>.Filter.Lte(m => m.LockedUntil, now) &
-        Builders<Message<T>>.Filter.Lte(m => m.ScheduledEnqueueTime, now) &
-        Builders<Message<T>>.Filter.Eq(m => m.Completed, null) &
-        Builders<Message<T>>.Filter.Eq(m => m.PartitionKey, partitionKey);
-
-    var sort = Builders<Message<T>>.Sort.Ascending(m => m.Created);
-
-    var options = new FindOneAndUpdateOptions<Message<T>, Message<T>>
-    {
-      Sort = sort,
-      ReturnDocument = ReturnDocument.After
-    };
-
-    var update = Builders<Message<T>>.Update
-        .Set(m => m.LockedUntil, now + _lockDuration)
-        .Inc(m => m.DeliveryCount, 1);
-    update = autoComplete ? update.Set(m => m.Completed, now) : update;
-    if (_cosmosDB && _expireAfter != TimeSpan.Zero)
-    {
-      update = update.Set(m => m.ttl, (int)_expireAfter.TotalSeconds);
-    }
-
-    return await _collection.FindOneAndUpdateAsync(filter, update, options, cancellationToken);
+    var messages = await Dequeue(1, partitionKey, cancellationToken, autoComplete);
+    return messages.FirstOrDefault();
   }
 
   /// <summary>
@@ -198,7 +173,6 @@ public class MongoDBQ<T>
 
       var messages = await _collection.FindAsync(filter, options, cancellationToken);
       var list = await messages.ToListAsync(cancellationToken);
-      if (list.Count > 0)
       {
         var update = Builders<Message<T>>.Update
             .Set(m => m.LockedUntil, now + _lockDuration)
@@ -211,6 +185,15 @@ public class MongoDBQ<T>
         var ids = list.Select(m => m.Id).ToList();
         var query = Builders<Message<T>>.Filter.In(m => m.Id, ids);
         await _collection.UpdateManyAsync(query, update, cancellationToken: cancellationToken);
+        foreach (var message in list)
+        {
+          message.LockedUntil = now + _lockDuration;
+          message.DeliveryCount++;
+          if (autoComplete)
+          {
+            message.Completed = now;
+          }
+        }
       }
       return list.ToArray();
     }
