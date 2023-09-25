@@ -204,6 +204,51 @@ public class MongoDBQ<T>
   }
 
   /// <summary>
+  /// Peeks a message from the queue with an optional partition key and cancellation token.
+  /// </summary>
+  /// <param name="partitionKey">An optional partition key to use for dequeueing the message.</param>
+  /// <param name="cancellationToken">An optional cancellation token that can be used to cancel the operation.</param>
+  /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with a message.</returns>
+  /// <remarks>Peeked messages are not locked and will be returned again on the next dequeue operation.</remarks>
+  public async Task<Message<T>?> Peek(string? partitionKey = null, CancellationToken cancellationToken = default)
+  {
+    var messages = await Peek(1, partitionKey, cancellationToken);
+    return messages.FirstOrDefault();
+  }
+
+  /// <summary>
+  /// Peeks a collection of messages from the queue with an optional partition key and cancellation token.
+  /// </summary>
+  /// <param name="count">The number of messages to peek.</param>
+  /// <param name="partitionKey">An optional partition key to use for peeking the message.</param>
+  /// <param name="cancellationToken">An optional cancellation token that can be used to cancel the operation.</param>
+  /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with an array of messages.</returns>
+  /// <remarks>Peeked messages are not locked and will be returned again on the next dequeue operation.</remarks>
+  public async Task<Message<T>[]> Peek(int count, string? partitionKey = null, CancellationToken cancellationToken = default)
+  {
+    var now = DateTime.UtcNow;
+
+    var filter =
+        Builders<Message<T>>.Filter.Lt(m => m.DeliveryCount, _maxDeliveryCount) &
+        Builders<Message<T>>.Filter.Lte(m => m.LockedUntil, now) &
+        Builders<Message<T>>.Filter.Lte(m => m.ScheduledEnqueueTime, now) &
+        Builders<Message<T>>.Filter.Eq(m => m.Completed, null) &
+        Builders<Message<T>>.Filter.Eq(m => m.PartitionKey, partitionKey);
+
+    var sort = Builders<Message<T>>.Sort.Ascending(m => m.Created);
+
+    var options = new FindOptions<Message<T>>
+    {
+      Sort = sort,
+      Limit = count
+    };
+
+    var messages = await _collection.FindAsync(filter, options, cancellationToken);
+    var list = await messages.ToListAsync(cancellationToken);
+    return list.ToArray();
+  }
+
+  /// <summary>
   /// Marks a message as completed.
   /// </summary>
   /// <param name="message">The message to mark as completed.</param>

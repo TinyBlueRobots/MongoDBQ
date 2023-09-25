@@ -13,7 +13,7 @@ let tests =
     let testApi = TestApi(1, TimeSpan.FromSeconds 1)
     testApi.Enqueue message1 |> ignore
     testApi.Enqueue message2 |> ignore
-    let dequeuedMessages = testApi.Dequeue(2)
+    let dequeuedMessages = testApi.Dequeue 2
     Expect.objectsEqual message1.Body dequeuedMessages[0].Body
     Expect.objectsEqual message2.Body dequeuedMessages[1].Body
 

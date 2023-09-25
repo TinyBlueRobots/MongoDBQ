@@ -30,6 +30,7 @@ type TestApi(maxDeliveryCount, lockDuration, ?cosmosDB) =
     mongoDBQ.Dequeue(Option.toObj partitionKey).Result
 
   member _.Dequeue count = mongoDBQ.Dequeue(count = count).Result
+  member _.Peek count = mongoDBQ.Peek(count = count).Result
 
   member _.Dequeue autoComplete =
     mongoDBQ.Dequeue(autoComplete = autoComplete).Result
