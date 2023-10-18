@@ -10,6 +10,8 @@ NUGET
     Expecto (10.1)
       FSharp.Core (>= 7.0.200)
       Mono.Cecil (>= 0.11.4 < 1.0)
+    FSharp.Control.TaskSeq (0.3)
+      FSharp.Core (>= 6.0.2)
     FSharp.Core (7.0.400)
     Microsoft.Extensions.Logging.Abstractions (7.0.1)
     Microsoft.NETCore.Platforms (7.0.4)

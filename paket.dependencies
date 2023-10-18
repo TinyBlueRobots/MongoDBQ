@@ -3,5 +3,6 @@ source https://api.nuget.org/v3/index.json
 framework: auto-detect
 storage: none
 nuget Expecto
+nuget FSharp.Control.TaskSeq
 nuget MongoDB.Driver
 nuget ObjectsComparer

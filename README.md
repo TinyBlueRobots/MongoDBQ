@@ -65,8 +65,14 @@ while (true)
 
 - `count`: The number of messages to dequeue from the queue. The method will attempt to dequeue the specified number of messages but may return fewer messages if there are not enough available.
 - `partitionKey`: The optional partition key to use for dequeueing messages. If provided, the method will only dequeue messages with a matching partition key. This is useful for processing messages in parallel while ensuring that messages with the same partition key are processed in order. It could also allows you to have messages for different services in the same collection.
-- `cancellationToken`: An optional cancellation token that can be used to cancel the dequeue operation. If the provided cancellation token is triggered, the method will stop dequeueing messages and return the dequeued messages up to that point.
 - `autoComplete`: A boolean parameter indicating whether the dequeued messages should be automatically marked as completed after they are dequeued. If set to true, the method will mark the dequeued messages as completed, preventing them from being dequeued again. If set to false, the dequeued messages will remain in the queue, and you will need to manually complete or fail them based on your processing logic.
+- `cancellationToken`: An optional cancellation token that can be used to cancel the dequeue operation. If the provided cancellation token is triggered, the method will stop dequeueing messages and return the dequeued messages up to that point.
+
+`MongoDBQ.DequeueAsyncEnumerable` parameters:
+
+- `partitionKey`: The optional partition key to use for streaming messages. If provided, the method will only stream messages with a matching partition key. This is useful for processing messages in parallel while ensuring that messages with the same partition key are processed in order. It could also allows you to have messages for different services in the same collection.
+- `autoComplete`: A boolean parameter indicating whether the dequeued messages should be automatically marked as completed after they are dequeued. If set to true, the method will mark the dequeued messages as completed, preventing them from being dequeued again. If set to false, the dequeued messages will remain in the queue, and you will need to manually complete or fail them based on your processing logic.
+- `cancellationToken`: An optional cancellation token that can be used to cancel the stream operation. If the provided cancellation token is triggered, the method will stop streaming messages and return the dequeued messages up to that point.
 
 `Message` properties:
 

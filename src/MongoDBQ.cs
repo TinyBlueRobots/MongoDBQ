@@ -1,6 +1,7 @@
 namespace MongoDBQ;
 
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using MongoDB.Driver;
 
 /// <summary>
@@ -134,21 +135,21 @@ public class MongoDBQ<T>
   /// <param name="cancellationToken">An optional cancellation token that can be used to cancel the operation.</param>
   /// <param name="autoComplete">Whether to automatically complete the message after it is dequeued.</param>
   /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with a dequeued message.</returns>
-  public async Task<Message<T>?> Dequeue(string? partitionKey = null, CancellationToken cancellationToken = default, bool autoComplete = false)
+  public async Task<Message<T>?> Dequeue(string? partitionKey = null, bool autoComplete = false, CancellationToken cancellationToken = default)
   {
-    var messages = await Dequeue(1, partitionKey, cancellationToken, autoComplete);
+    var messages = await Dequeue(1, partitionKey, autoComplete, cancellationToken);
     return messages.FirstOrDefault();
   }
 
   /// <summary>
-  /// Dequeues a collection of messages from the queue.
+  /// Dequeues an array of messages from the queue. This will lock the partition for the duration of the operation.
   /// </summary>
   /// <param name="count">The number of messages to dequeue.</param>
   /// <param name="partitionKey">The partition key to use for dequeueing the message.</param>
   /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
   /// <param name="autoComplete">Whether to automatically complete the messages after they are dequeued.</param>
   /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation, with an array of dequeued messages.</returns>
-  public async Task<Message<T>[]> Dequeue(int count, string? partitionKey = null, CancellationToken cancellationToken = default, bool autoComplete = false)
+  public async Task<Message<T>[]> Dequeue(int count, string? partitionKey = null, bool autoComplete = false, CancellationToken cancellationToken = default)
   {
     var partitionLock = _partitionKeyLocks.GetOrAdd(partitionKey ?? "", new SemaphoreSlim(1, 1));
     await partitionLock.WaitAsync(cancellationToken);
@@ -196,6 +197,66 @@ public class MongoDBQ<T>
         }
       }
       return list.ToArray();
+    }
+    finally
+    {
+      partitionLock.Release();
+    }
+  }
+
+  /// <summary>
+  /// Dequeues a stream of messages from the queue. This will lock the partition for the duration of the stream.
+  /// </summary>
+  /// <param name="partitionKey">The partition key to use for dequeueing the message.</param>
+  /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+  /// <param name="autoComplete">Whether to automatically complete the messages after they are dequeued.</param>
+  /// <returns>A <see cref="IAsyncEnumerable{TResult}"/> representing the asynchronous operation, with an enumerable of dequeued messages.</returns>
+  public async IAsyncEnumerable<Message<T>> DequeueAsyncEnumerable(string? partitionKey = null, bool autoComplete = false, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+  {
+    var partitionLock = _partitionKeyLocks.GetOrAdd(partitionKey ?? "", new SemaphoreSlim(1, 1));
+    await partitionLock.WaitAsync(cancellationToken);
+    try
+    {
+      var now = DateTime.UtcNow;
+
+      var filter =
+          Builders<Message<T>>.Filter.Lt(m => m.DeliveryCount, _maxDeliveryCount) &
+          Builders<Message<T>>.Filter.Lte(m => m.LockedUntil, now) &
+          Builders<Message<T>>.Filter.Lte(m => m.ScheduledEnqueueTime, now) &
+          Builders<Message<T>>.Filter.Eq(m => m.Completed, null) &
+          Builders<Message<T>>.Filter.Eq(m => m.PartitionKey, partitionKey);
+
+      var sort = Builders<Message<T>>.Sort.Ascending(m => m.Created);
+
+      var options = new FindOptions<Message<T>>
+      {
+        Sort = sort,
+      };
+      var update = Builders<Message<T>>.Update
+                  .Set(m => m.LockedUntil, now + _lockDuration)
+                  .Inc(m => m.DeliveryCount, 1);
+      update = autoComplete ? update.Set(m => m.Completed, now) : update;
+      if (_cosmosDB && _expireAfter != TimeSpan.Zero)
+      {
+        update = update.Set(m => m.ttl, (int)_expireAfter.TotalSeconds);
+      }
+      var messages = await _collection.FindAsync(filter, options, cancellationToken);
+      while (await messages.MoveNextAsync(cancellationToken))
+      {
+        var ids = messages.Current.Select(m => m.Id).ToList();
+        var query = Builders<Message<T>>.Filter.In(m => m.Id, ids);
+        await _collection.UpdateManyAsync(query, update, cancellationToken: cancellationToken);
+        foreach (var message in messages.Current)
+        {
+          message.LockedUntil = now + _lockDuration;
+          message.DeliveryCount++;
+          if (autoComplete)
+          {
+            message.Completed = now;
+          }
+          yield return message;
+        }
+      }
     }
     finally
     {
@@ -264,7 +325,7 @@ public class MongoDBQ<T>
   /// </summary>
   /// <param name="messages">The messages to mark as completed.</param>
   /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
-  /// <returns>A <see cref="Task{Boolean}"/> representing the asynchronous operation, with a boolean value indicating whether the message was marked as completed successfully.</returns> 
+  /// <returns>A <see cref="Task{Boolean}"/> representing the asynchronous operation, with a boolean value indicating whether the message was marked as completed successfully.</returns>
   public async Task<bool> Complete(IEnumerable<Message<T>> messages, CancellationToken cancellationToken = default)
   {
     var update = Builders<Message<T>>.Update.Set(m => m.Completed, DateTime.UtcNow);

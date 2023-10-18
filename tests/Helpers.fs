@@ -35,6 +35,8 @@ type TestApi(maxDeliveryCount, lockDuration, ?cosmosDB) =
   member _.Dequeue autoComplete =
     mongoDBQ.Dequeue(autoComplete = autoComplete).Result
 
+  member _.DequeueAsyncEnumerable() = mongoDBQ.DequeueAsyncEnumerable()
+
   member _.Complete(message: Message<_>) = mongoDBQ.Complete(message).Result
   member _.Complete(messages: _ seq) = mongoDBQ.Complete(messages).Result
   member _.Fail message = mongoDBQ.Fail(message).Result
