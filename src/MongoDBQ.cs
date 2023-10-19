@@ -175,8 +175,9 @@ public class MongoDBQ<T>
       var messages = await _collection.FindAsync(filter, options, cancellationToken);
       var list = await messages.ToListAsync(cancellationToken);
       {
+        var lockedUntil = _lockDuration > TimeSpan.Zero ? now + _lockDuration : now;
         var update = Builders<Message<T>>.Update
-            .Set(m => m.LockedUntil, now + _lockDuration)
+            .Set(m => m.LockedUntil, lockedUntil)
             .Inc(m => m.DeliveryCount, 1);
         update = autoComplete ? update.Set(m => m.Completed, now) : update;
         if (_cosmosDB && _expireAfter != TimeSpan.Zero)
@@ -188,7 +189,7 @@ public class MongoDBQ<T>
         await _collection.UpdateManyAsync(query, update, cancellationToken: cancellationToken);
         foreach (var message in list)
         {
-          message.LockedUntil = now + _lockDuration;
+          message.LockedUntil = lockedUntil;
           message.DeliveryCount++;
           if (autoComplete)
           {
@@ -232,8 +233,9 @@ public class MongoDBQ<T>
       {
         Sort = sort,
       };
+      var lockedUntil = _lockDuration > TimeSpan.Zero ? now + _lockDuration : now;
       var update = Builders<Message<T>>.Update
-                  .Set(m => m.LockedUntil, now + _lockDuration)
+                  .Set(m => m.LockedUntil, lockedUntil)
                   .Inc(m => m.DeliveryCount, 1);
       update = autoComplete ? update.Set(m => m.Completed, now) : update;
       if (_cosmosDB && _expireAfter != TimeSpan.Zero)
@@ -248,7 +250,7 @@ public class MongoDBQ<T>
         await _collection.UpdateManyAsync(query, update, cancellationToken: cancellationToken);
         foreach (var message in messages.Current)
         {
-          message.LockedUntil = now + _lockDuration;
+          message.LockedUntil = lockedUntil;
           message.DeliveryCount++;
           if (autoComplete)
           {
